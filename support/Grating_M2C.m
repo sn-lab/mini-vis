@@ -1,29 +1,30 @@
 function cs = Grating_M2C(cs)
-
+%FUNCTION cs = Grating_M2C(cs)
+%
+% Function to send grating parameters from Matlab to Arduino.
+%
 % Parameter list
 % command 101: set parameters:
 %       parameter 1: read delay (ms) (1 data byte)
 %       parameter 2: bar1 color [R G B] (3 data bytes)
-%       parameter 3: set bar2 color [R G B] (3 data bytes)
-%       parameter 4: set background color [R G B] (3 data bytes)
-%       parameter 5: set bar width (# of pixels), depending on number of gratings) (1 data byte)
-%       parameter 6: set number of gratings (bar1 + bar2 = 1 grating) (1 data byte)
-%       parameter 7: set angle (0-360) (2 data bytes)
-%       parameter 8: set frequency (Hz) (1 data byte)
-%       parameter 9: set position [x, y] of grating center (pixels) (2 data bytes)
-%       parameter 10: set pre delay (s) (1 data byte)
-%       parameter 11: set duration (s) (1 data byte)
-%       parameter 12: set output signal voltage (pwm) (1 data byte)
-%       total parameter bytes: 20
+%       parameter 3: bar2 color [R G B] (3 data bytes)
+%       parameter 4: background color [R G B] (3 data bytes)
+%       parameter 5: bar width (# of pixels), depending on number of gratings) (1 data byte)
+%       parameter 6: number of gratings (bar1 + bar2 = 1 grating) (1 data byte)
+%       parameter 7: angle (0-360) (2 data bytes)
+%       parameter 8: frequency (Hz) (1 data byte)
+%       parameter 9: position [x, y] of grating center (pixels) (2 data bytes)
+%       parameter 10: pre delay (s) (1 data byte)
+%       parameter 11: duration (s) (1 data byte)
+%       parameter 12: output signal voltage (pwm) (1 data byte)
+%       total bytes: 20
 
 
 %% check for errors in parameters
-tic %starts timer (this function will take up 1 second)
-
-max_size = 70; %maximum grating half-width that can fit inside viewable area   
+max_size = 70; %maximum window half-width that can fit inside viewable area   
 
 %check that readdelay parameter is in range
-assert(cs.param.readdelay>0&&cs.param.readdelay<=255,'fastcheck value must be integer between 1-255');
+assert(cs.param.readdelay>0&&cs.param.readdelay<=255,'readdelay value must be integer between 1-255');
 
 %check that color values are integers within range for 16-bit color
 assert(cs.param.bar1color(1)>=0 & cs.param.bar1color(1)<32,'red value of bar 1 must be between 0-31');
@@ -107,10 +108,5 @@ fwrite(cs.controller,cs.param.predelay*10,'uint8'); %converts pre delay to units
 fwrite(cs.controller,cs.param.duration*10,'uint8'); %converts duration to units of 100 ms for uint8 data transfer
 fwrite(cs.controller,round(cs.param.output*255/5),'uint8'); %convert 0-5 V range to 1 byte (0-255)],'uint8');
     
-
-%% pause so that this script takes 1 second
-while toc<1
-    pause(0.001) %pause for 1 ms
-end
 
 end

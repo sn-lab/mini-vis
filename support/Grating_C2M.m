@@ -1,13 +1,15 @@
 function cs = Grating_C2M(cs)
-    
-tic
+%FUNCTION cs = Grating_C2M(cs)
+%
+% Function to retrieve serial communication data from Arduino.
 
+%list of data types retrieved from Arduino
 cs.datanames = {'counter', 'time', 'trial', 'repetition', 'readdelay', ...
     'bar1red', 'bar1green', 'bar1blue', 'bar2red', 'bar2green', 'bar2blue', 'backred', ...
     'backgreen', 'backblue', 'barwidth', 'numgratings', 'angle', 'frequency', ...
     'position1', 'position2', 'predelay', 'duration', 'output', 'benchmark'};
 
-
+%Retrieve all serial data waiting in the cache
 while cs.controller.BytesAvailable>0
     msgtype = fread(cs.controller,1,'uint8');
     switch msgtype
@@ -16,7 +18,7 @@ while cs.controller.BytesAvailable>0
             versionID = typecast(uint8(bytes),'uint32');
             fprintf(['Arduino program version ID: ' num2str(versionID) ' \n']);
 
-        case 201 %gratings start; record parameters and timestamp
+        case 201 %display start; record parameters and timestamp
             row = size(cs.data,1)+1; %next row of data
             
             bytes = fread(cs.controller,4,'uint8')'; 
@@ -38,6 +40,16 @@ while cs.controller.BytesAvailable>0
             angle = sum(angle2b);
             bytes = fread(cs.controller,4,'uint8')';
             benchmark = typecast(uint8(bytes),'uint32');
+            
+            %for flicker, change all irrelevant parameters to NaN
+            if numgratings==0
+                bar1color = [nan nan nan];
+                bar2color = [nan nan nan];
+                barwidth = nan;
+                position = nan;
+                angle = nan;
+                benchmark = nan;
+            end
             
             %save current data and parameters
             if isfield(cs,'trial')
@@ -70,12 +82,6 @@ while cs.controller.BytesAvailable>0
             end
             error(['message type from controller not recognized (' num2str(msgtype) '). cache cleared (' num2str(cache) ').']);
     end
-end
-
-   
-%% pause so that this script takes 0.1 seconds
-while toc<=0.099
-    pause(0.001) %pause for 1 ms
 end
 
 end

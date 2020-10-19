@@ -1,14 +1,18 @@
 function cs = c_com(cs, command)
 % FUNCTION cs = c_com(cs, command)
 %
-% list of commands:
-% 'Get-Version': gets Arduino program version number
-% 'Set-Parameters': sets current grating parameters (ID 101)
+% Function to manage serial communication between Matlab and Arduino.
+%
+% LIST OF COMMANDS:
+% 'Connect': opens serial connection to Arduino
+% 'Disconnect': closes serial connection to Arduino
+% 'Get-Version': gets Arduino program version number (ID 0)
+% 'Send-Parameters': sets current grating parameters (ID 101)
 % 'Fill-Background': fills screen with background color (ID 102):
 % 'Backlight-Off': turns off backlight (ID 103)
 % 'Backlight-On': turns on backlight (ID 104)
-% 'Benchmark': calculates fastest temporal frequency for current grating (ID 105)
-% 'Start-Display': start current grating (ID 106)
+% 'Start-Display': start current grating (ID 105)
+% 'Start-Flicker': flicker backlight at current frequency (ID 106)
 % 'Get-Data': retrieve data sent back from controller 
 
 switch command
@@ -59,9 +63,14 @@ switch command
             fwrite(cs(i).controller,104,'uint8'); %turns display backlight on
         end
         
-    case 'Start-Display'
+    case 'Start-Grating'
         for i=1:length(cs)
             fwrite(cs(i).controller,105,'uint8'); %start gratings of current parameters
+        end
+        
+    case 'Start-Flicker'
+        for i=1:length(cs)
+            fwrite(cs(i).controller,106,'uint8'); %start gratings of current parameters
         end
         
     case 'Get-Data'
