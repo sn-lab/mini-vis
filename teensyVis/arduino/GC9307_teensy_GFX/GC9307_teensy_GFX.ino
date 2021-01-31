@@ -19,7 +19,6 @@ byte demo; // 1=run demo, 0=ignore demo
 
 //initialize default pattern parameters
 uint8_t commandID = 0;
-uint8_t readDelay = 100; //duration (in ms) between checking for new incoming serial data
 uint8_t centerPosition[2] = {0, 0}; //[x, y] center coordinate of pattern relative to display center
 uint8_t numGratings = 2; //number of repeated dark/bright bars in grating
 uint8_t barWidth = 40; //width of each dark/bright bar (in pixels) of grating
@@ -29,16 +28,19 @@ uint8_t temporalFrequencyDHz = 10; //speed of gratings/flickers (in deci-Hertz)
 uint8_t patternType = 1; //1=square-wave grating, 2=sine-wave grating, 3=flicker
 uint8_t preDelayDs = 0; //delay (in s) to wait after start command until pattern is drawn
 uint8_t durationDs = 1; //duration (in deci-seconds) to draw pattern
+uint8_t wait4Trigger = 0; //whether to wait for TRIG_IN signal to start pattern
 float benchmarkHz; //maximum temporal frequency a pattern can be displayed (calculated later)
 unsigned long numPatternsDisplayed = 0;
 unsigned long startTime = 0;
 
 //initialize other common variables
-int i, r, c, e, startCommand = 0, wait4Trigger = 0;
+uint8_t readDelay = 100; //duration (in ms) between checking for new incoming serial data
+int i, r, c, e, startCommand = 0, 
 byte * bytes4x;
 unsigned long startMs, endMs, startUs, endUs;
 float durUs;
 uint16_t backgroundColor, prevBackgroundColor;
+float versionID = 9307.1;
   
 //instantiate display with driver for GC9307-based display
 Adafruit_GC9307 tft = Adafruit_GC9307(TFT_CS, TFT_DC, TFT_RST);
@@ -73,26 +75,31 @@ void loop() { //main program loop
   commandID = readSerialMessage(); //read incoming message ID byte (specifies what data is coming next)
   if (commandID!=0) {
     switch (commandID) {
-      case 101: //command to set all parameters
-        wait4Serial(readDelay, 20); //wait for 20 available bytes
+      case 0: //command to send version ID back over serial
+        serialWriteFloat(versionID);
+        break;
         
-        readDelay = readSerialMessage(); //byte 1
+      case 101: //command to set parameters (and possibly start displaying the pattern)
+        wait4Serial(readDelay, 21); //wait for 21 available bytes
+
+        startCommand = readSerialMessage(); //byte 1
+        patternType = readSerialMessage(); //byte 2
         for (r=0;r<3;r++) {
           for (c=0;c<3;c++) {
-            colorBytes[r][c] = readSerialMessage(); //bytes 2-10
+            colorBytes[r][c] = readSerialMessage(); //bytes 3-11
           }
         }
-        barWidth = readSerialMessage(); //byte 11
-        numGratings = readSerialMessage(); //byte 12
-        angleBytes[0] = readSerialMessage(); //byte 13
-        angleBytes[1] = readSerialMessage(); //byte 14
-        temporalFrequencyDHz = readSerialMessage(); //byte 15
-        centerPosition[0] = readSerialMessage(); //byte 16
-        centerPosition[1] = readSerialMessage(); //byte 17
-        durationDs = readSerialMessage(); //byte 18 
+        barWidth = readSerialMessage(); //byte 12
+        numGratings = readSerialMessage(); //byte 13
+        angleBytes[0] = readSerialMessage(); //byte 14
+        angleBytes[1] = readSerialMessage(); //byte 15
+        temporalFrequencyDHz = readSerialMessage(); //byte 16
+        centerPosition[0] = readSerialMessage(); //byte 17
+        centerPosition[1] = readSerialMessage(); //byte 18
         preDelayDs = readSerialMessage(); //byte 19
-        patternType = readSerialMessage(); //byte 20
-
+        durationDs = readSerialMessage(); //byte 20
+        wait4Trigger = readSerialMessage(); //byte 21
+        
         //fill screen with background color, if changed
         backgroundColor = colorBytes[2][2]; //add blue value to lowest 5 bits
         backgroundColor = backgroundColor<<6; //shift blue over by 6 bits, leaving lower 6 bits empty now
@@ -103,26 +110,10 @@ void loop() { //main program loop
           tft.fillScreen(backgroundColor);
           prevBackgroundColor = backgroundColor;
         }
-        
-      case 106: //start pattern
-        startCommand = 1;
-        break;  
-
-      case 116: //start on input trigger
-        startCommand = 1;
-        wait4Trigger = 1;
         break;
         
-      case 126: //demo on
-        demo = 1;
-        if (demo!=EEPROM.read(demoEPPA)) {
-          EEPROM.write(demoEPPA, demo);
-          delay(10);
-        }
-        break;
-
-      case 127: //demo off
-        demo = 0;
+      case 111: //set demo mode
+        demo = readSerialMessage();
         if (demo!=EEPROM.read(demoEPPA)) {
           EEPROM.write(demoEPPA, demo);
           delay(10);
@@ -146,7 +137,7 @@ void loop() { //main program loop
     Serial.write(201); //byte 1: host-side command ID for incoming data
     serialWriteLong(numPatternsDisplayed); //bytes 2-5: number of patterns displayed so far
     serialWriteLong(startTime); //bytes 6-9: pattern start timestamp
-    Serial.write(readDelay); //byte 10
+    Serial.write(patternType); //byte 10
     for (r=0;r<3;r++) {
       for (c=0;c<3;c++) {
         Serial.write(colorBytes[r][c]); //bytes 11-19
@@ -159,10 +150,10 @@ void loop() { //main program loop
     Serial.write(centerPosition,2); //bytes 25-26
     Serial.write(durationDs); //byte 27
     Serial.write(preDelayDs); //byte 28
-    Serial.write(patternType); //byte 29
+    Serial.write(wait4Trigger); //byte 29
+    serialWriteFloat(benchmarkHz); //bytes 30-33
 
     startCommand = 0; //reset startCommand to 0 to wait for next pattern
-    wait4Trigger = 0; //reset wait-for-input-trigger option
   }
 }
 
