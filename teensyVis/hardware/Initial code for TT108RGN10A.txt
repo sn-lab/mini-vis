@@ -1,0 +1,89 @@
+SPI_WriteComm(0xfe); //254
+SPI_WriteComm(0xef); //239	
+		
+SPI_WriteComm(0x36); //54	
+SPI_WriteData(0x48); //72
+SPI_WriteComm(0x3a); //58
+SPI_WriteData(0x05); //5	
+	
+SPI_WriteComm(0x86); //134
+SPI_WriteData(0x98); //152
+SPI_WriteComm(0x89); //137
+SPI_WriteData(0x03); //3
+	
+SPI_WriteComm(0x8b); //139
+SPI_WriteData(0x80); //128
+	
+SPI_WriteComm(0x8d); //141
+SPI_WriteData(0x33); //51
+SPI_WriteComm(0x8e); //142
+SPI_WriteData(0x8f); //143
+
+//inversion
+SPI_WriteComm(0xe8); //232
+SPI_WriteData(0x12); //18
+SPI_WriteData(0x00); //0
+
+SPI_WriteComm(0xc3); //195
+SPI_WriteData(0x20); //32
+
+SPI_WriteComm(0xc4); //196
+SPI_WriteData(0x30); //48
+
+SPI_WriteComm(0xc9); //201
+SPI_WriteData(0x08); //8
+
+
+SPI_WriteComm(0xff); //255
+SPI_WriteData(0x62); //98
+
+SPI_WriteComm(0x99); //153
+SPI_WriteData(0x3e); //62
+SPI_WriteComm(0x9d); //157
+SPI_WriteData(0x4b); //75
+SPI_WriteComm(0x98); //152
+SPI_WriteData(0x3e); //62
+SPI_WriteComm(0x9c); //156
+SPI_WriteData(0x4b); //75
+
+
+SPI_WriteComm(0xf0); //240
+SPI_WriteData(0x13); //19
+SPI_WriteData(0x14); //20
+SPI_WriteData(0x07); //7
+SPI_WriteData(0x05); //5
+SPI_WriteData(0xf0); //240
+SPI_WriteData(0x29); //41
+
+SPI_WriteComm(0xf1); //241
+SPI_WriteData(0x3e); //62
+SPI_WriteData(0x92); //146
+SPI_WriteData(0x90); //144
+SPI_WriteData(0x21); //33
+SPI_WriteData(0x23); //35
+SPI_WriteData(0x9f); //159
+
+
+
+SPI_WriteComm(0xf2); //242
+SPI_WriteData(0x13); //19
+SPI_WriteData(0x14); //20
+SPI_WriteData(0x07); //7
+SPI_WriteData(0x05); //5
+SPI_WriteData(0xf0); //240
+SPI_WriteData(0x29); //41
+
+SPI_WriteComm(0xf3); //243
+SPI_WriteData(0x3e); //62
+SPI_WriteData(0x92); //146
+SPI_WriteData(0x90); //144
+SPI_WriteData(0x21); //33
+SPI_WriteData(0x23); //35
+SPI_WriteData(0x9f); //159
+
+
+
+SPI_WriteComm(0x11); //17
+Delay(120);
+SPI_WriteComm(0x29); //41
+SPI_WriteComm(0x2c); //44
