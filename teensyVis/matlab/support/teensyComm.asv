@@ -29,11 +29,22 @@ switch command
             vs(i).data = []; %create empty data structure
             vs(i).datanames = {};
             
-            %check if teensy is already running (must be in demo mode then)
+            %check if teensy is already running (demo mode)
             if vs(i).controller.BytesAvailable>0
+                demoMode = 1;
                 fprintf(['Teensy ' num2str(i) ' is running in demo mode. Turning off... ']);
-                teensyComm(vs(i),'Demo-Off'); %turn demo mode off
-                fprintf('done.\n')
+                fwrite(vs(i).controller,110,'uint8'); %command to turn demo mode off
+                %keep reading until message recieved that demo mode is off
+                while demoMode
+                    msg1 = fread(vs(i).controller,1,'uint8');
+                    if msg1==112 
+                        msg2 = fread(vs(i).controller,1,'uint8');
+                        if msg2==212
+                            demoMode = 0;
+                        end
+                    end
+                end
+                fprintf('demo mode off.\n')
             end
         end
         
@@ -77,18 +88,18 @@ switch command
         
     case 'Demo-Off'
         for i=1:length(vs)
-            demoMode = 1;
             fwrite(vs(i).controller,110,'uint8'); %command to turn demo mode off
             %keep reading until message recieved that demo mode is off
-            while demoMode
-                msg1 = fread(vs(i).controller,1,'uint8');
-                if msg1==112 
-                    msg2 = fread(vs(i).controller,1,'uint8');
-                    if msg2==212
-                        demoMode = 0;
+                while demoMode
+                    msg1 = fread(vs(i).controller,1,'uint8');
+                    if msg1==112 
+                        msg2 = fread(vs(i).controller,1,'uint8');
+                        if msg2==212
+                            demoMode = 0;
+                        end
                     end
                 end
-            end
+                fprintf('demo mode off.\n')
         end
         
     otherwise

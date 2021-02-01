@@ -49,7 +49,7 @@ while vs.controller.BytesAvailable>0
             vs.data(row,22) = double(fread(vs.controller,1,'uint8'))/10; %duration
             vs.data(row,23) = fread(vs.controller,1,'uint8'); %trigger
             bytes = fread(vs.controller,4,'uint8')';
-            vs.data(row,24) = typecast(uint8(bytes),'float'); %benchmark
+            vs.data(row,24) = typecast(uint8(bytes),'single'); %benchmark
             
         case 225
             ID = fread(vs.controller,1,'uint8');

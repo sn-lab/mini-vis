@@ -15,7 +15,9 @@ int width = 240; // width of display in pixels
 int height = 210; // height of display in pixels
 float pi = 3.14159;
 int demoEPPA = 0; // eeprom address for stored demo byte
-byte demo; // 1=run demo, 0=ignore demo
+byte demo; // 111=run demo, 110=don't run demo
+int backgroundEPPA[3] = {1, 2, 3}; //eeprom address for background color RGB values;
+byte backgroundRGB[3]; //[red, green, blue] color values of display background
 
 //initialize default pattern parameters
 uint8_t commandID = 0;
@@ -35,13 +37,24 @@ unsigned long startTime = 0;
 
 //initialize other common variables
 uint8_t readDelay = 100; //duration (in ms) between checking for new incoming serial data
-int i, r, c, e, startCommand = 0, 
+int i, r, c, e, startCommand = 0;
 byte * bytes4x;
 unsigned long startMs, endMs, startUs, endUs;
 float durUs;
 uint16_t backgroundColor, prevBackgroundColor;
 float versionID = 9307.1;
-  
+
+//create prototypes for every function in this program (I still don't know why this is necessary...)
+void runDemo();
+void wait4Serial(uint8_t wait, int num2wait4);
+uint8_t readSerialMessage();
+void serialWriteLong(unsigned long UL);
+void serialWriteFloat(float F);
+float deg2rad(uint16_t deg);
+void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW, 
+        uint8_t aBytes[2], uint8_t freq, uint8_t color[3][3], uint8_t pre, 
+        uint8_t dur, int wait4Trig, unsigned long &startT, float &bmark);
+        
 //instantiate display with driver for GC9307-based display
 Adafruit_GC9307 tft = Adafruit_GC9307(TFT_CS, TFT_DC, TFT_RST);
 
@@ -54,11 +67,23 @@ void setup(void) {
   
   //check EEPROM storage for demo byte, write 1 to it if it hasn't been set yet
   demo = EEPROM.read(demoEPPA);
-  if (demo!=0 || demo!=1) {
-    demo = 1;
+  if (demo!=110 && demo!=111) { //if demo byte hasn't bee stored yet?
+    demo = 111;
     EEPROM.write(demoEPPA, demo);
     delay(10);
   }
+
+  //check EEPROM for stored backgroundColor 
+  for (i=0;i<3;i++) {
+    backgroundRGB[i] = EEPROM.read(backgroundEPPA[i]);
+  }
+  backgroundColor = backgroundRGB[2]; //add blue value to lowest 5 bits
+  backgroundColor = backgroundColor<<6; //shift blue over by 6 bits, leaving lower 6 bits empty now
+  backgroundColor |= backgroundRGB[1]; //add green value to lowest 6 bits
+  backgroundColor = backgroundColor<<5; //shift blue/green over by 5 bits, leaving lowest 5 empty
+  backgroundColor |= backgroundRGB[0]; //add red value to lowest 5 bits
+  prevBackgroundColor = backgroundColor;
+  tft.fillScreen(backgroundColor);
 
   pinMode(TRIG_IN, INPUT);
   pinMode(TRIG_OUT, OUTPUT);
@@ -66,7 +91,7 @@ void setup(void) {
 }
 
 void loop() { //main program loop
-  if (demo==1) {runDemo();} //self-explanatory, right?
+  if (demo==111) {runDemo();} //self-explanatory, right?
 
   //wait for incoming instructions over serial connection
   wait4Serial(readDelay, 1); //wait for (at least) 1 available byte
@@ -107,13 +132,29 @@ void loop() { //main program loop
         backgroundColor = backgroundColor<<5; //shift blue/green over by 5 bits, leaving lowest 5 empty
         backgroundColor |= colorBytes[2][0]; //add red value to lowest 5 bits
         if (backgroundColor!=prevBackgroundColor) {
+          //write new background color to EEPROM
+          for (i=0;i<3;i++) {
+            EEPROM.write(backgroundEPPA[i],colorBytes[2][i]);
+          }
+          //fill screen with new background color
           tft.fillScreen(backgroundColor);
           prevBackgroundColor = backgroundColor;
         }
         break;
+
+      case 110: //set demo mode off
+        demo = commandID;
+        if (demo!=EEPROM.read(demoEPPA)) {
+          EEPROM.write(demoEPPA, demo);
+          delay(10);
+        }
+        //send message confirming that demo mode is off
+        Serial.write(112);
+        Serial.write(212);
+        break;
         
-      case 111: //set demo mode
-        demo = readSerialMessage();
+      case 111: //set demo mode on
+        demo = commandID;
         if (demo!=EEPROM.read(demoEPPA)) {
           EEPROM.write(demoEPPA, demo);
           delay(10);
@@ -126,6 +167,7 @@ void loop() { //main program loop
         break;
     }
   }
+  
   //display pattern (if start command was received)
   if (startCommand==1) {
     //display pattern
@@ -444,7 +486,6 @@ void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW,
   }
 }
 
-
 void runDemo() {
   Serial.println("Demo mode for Teensy Display");
 
@@ -496,6 +537,10 @@ void runDemo() {
     delay(2000);
     tft.fillScreen(ST77XX_BLACK);
 
+    if (Serial.available()>0) {
+      break;
+    }
+    
     // draw sine-wave gratings at 5 Hz temporal frequency
     durationDs = 10; //1 s
     numGratings = 1;
@@ -518,6 +563,10 @@ void runDemo() {
     Serial.println(F(" Hz at max speed "));
     delay(2000);
     tft.fillScreen(ST77XX_BLACK);
+
+    if (Serial.available()>0) {
+      break;
+    }
     
     //draw square-wave gratings for multiple directions - every 15 degrees
     patternType = 1;
@@ -538,6 +587,9 @@ void runDemo() {
         drawPattern(patternType, centerPosition, numGratings, barWidth, angleBytes, temporalFrequencyDHz, colorBytes, preDelayDs, durationDs, wait4Trigger, startTime, benchmarkHz);
         Serial.print(benchmarkHz);
         Serial.println(" Hz at max speed");
+      }
+      if (Serial.available()>0) {
+        break;
       }
     }
     delay(2000);

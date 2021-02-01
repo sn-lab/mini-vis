@@ -1,6 +1,6 @@
 %% open connection to controller
 clear vs %clear "vis-struct"
-vs.port = 'COM7';
+vs.port = 'COM6';
 vs = teensyComm(vs, 'Connect');
 
 %% set experiment parameters
@@ -10,8 +10,8 @@ vs.trial_duration = 5;
 vs.randomize = 0; %1=randomize order of conditions, 0=don't randomize
 
 % set starting/default grating parameters
-param.patternType = 1; %1 = square-gratings, 2 = sine-gratings, 3 = flicker
-param.bar1color = [0 0 30]; %RGB color values of bar 1 [R=0-31, G=0-63, B=0-31]
+param.patterntype = 1; %1 = square-gratings, 2 = sine-gratings, 3 = flicker
+param.bar1color = [15 0 30]; %RGB color values of bar 1 [R=0-31, G=0-63, B=0-31]
 param.bar2color = [0 0 0]; %RGB color values of bar 2
 param.backgroundcolor = [0 0 15]; %RGB color values of background
 param.barwidth = 20; % width of each bar (pixels)
@@ -26,11 +26,9 @@ param.trigger = 0; % tells the teensy whether to wait for an input trigger signa
 %% send stimulus
 tic
 vs = teensyComm(vs, 'Start-Pattern', param); %send pattern parameters and display the pattern
-
 while toc<vs.trial_duration %delay until next trial
     pause(0.001);
 end
-
 vs = teensyComm(vs, 'Get-Data'); %retrieve data sent from teensy about displayed pattern
 
 

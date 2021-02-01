@@ -65,7 +65,7 @@ if (mod(param.frequency*10,1)>0)
 end
 
 %check that position is within allowed range
-assert(abs(position(1))<=120 & abs(position(2))<=105,'position is not centered in viewable area (240x210)');
+assert(abs(param.position(1))<=120 & abs(param.position(2))<=105,'position is not centered in viewable area (240x210)');
 
 %check that duration is within range
 assert(param.duration>=0&param.duration<=25.5,'duration must be between 0-25.5 seconds');
@@ -82,8 +82,8 @@ if (mod(param.predelay*10,1)>0)
 end
 
 %check that trial duration is longer than display duration
-if isfield(cs,'trial_duration')
-    assert(trial_duration>param.predelay+param.duration,'trial duration must be longer than predelay + duration');
+if isfield(vs,'trial_duration')
+    assert(vs.trial_duration>param.predelay+param.duration,'trial duration must be longer than predelay + duration');
 end
 
 %check that trigger option is either 0 or 1
