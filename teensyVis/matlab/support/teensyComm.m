@@ -6,9 +6,8 @@ function vs = teensyComm(vs, command, param)
 % LIST OF COMMANDS:
 % 'Connect': opens serial connection to Arduino
 % 'Disconnect': closes serial connection to Arduino
-% 'Get-Version': gets Arduino program version number (command ID 0)
 % 'Start-Pattern': start pattern with the current pattern parameters (ID [101 1])
-% 'Send-Parameters': sets next pattern parameters; updates background but doesn't immediately start pattern (ID [101 0])
+% 'Send-Parameters': sets next pattern parameters -- updates background but doesn't immediately start pattern (ID [101 0])
 % 'Get-Data': retrieve data sent back from controller 
 % 'Demo-On': turns teensy demo mode on (ID 111)
 % 'Demo-Off': turns teensy demo mode off (ID 110)
@@ -16,7 +15,7 @@ function vs = teensyComm(vs, command, param)
 % INPUTS:
 % vs: "vis-struct", container for teensy and data info
 % command: instruction which tells matlab/teensy what to do next
-% param: (optional) parameters of pattern to be displayed
+% param: parameters of pattern to be displayed (only used for 'Start-Pattern' and 'Send-Parameters')
 
 switch command
     case 'Connect'
@@ -29,26 +28,33 @@ switch command
             vs(i).data = []; %create empty data structure
             vs(i).datanames = {};
             
-            %check if teensy is already running (must be in demo mode then)
+            %check if teensy is already running (if it is, assume it's in demo mode)
             if vs(i).controller.BytesAvailable>0
                 fprintf(['Teensy ' num2str(i) ' is running in demo mode. Turning off... ']);
                 teensyComm(vs(i),'Demo-Off'); %turn demo mode off
                 fprintf('done.\n')
             end
+            
+            %synchronize arduino and PC clock (i.e. calculate system clock timestamp when teensy clock began)
+            fwrite(vs(i).controller,121,'uint8'); %begin handshake
+            bytes = fread(vs.controller,4,'uint8')'; %read timestamp bytes
+            teensytime = typecast(uint8(bytes),'uint32'); %current teensy timestamp (measured in ms from teensy start)
+            pctime = now; %serial pc timestamp (ms precision)
+            pctime = pctime - seconds(teensytime/1000); %subtract teensy time seconds from pctime
+            vs(i).starttime_num = pctime; %approx. serial pc system time when teensy clock began (within 1 ms precision)
+            vs(i).starttime_str = datestr(pctime,'dd-mm-yyyy HH:MM:SS FFF'); %string version (easier to read by humans)
+            
+            %get teensy program version #
+            fwrite(vs(i).controller,0,'uint8'); %command to send back version number
+            bytes = fread(vs(i).controller,4,'uint8')';
+            versionID = typecast(uint8(bytes),'single');
+            vs(i).teensyversion = versionID;
         end
         
     case 'Disconnect'
         for i=1:length(vs)
             vs(i) = teensy2matlab(vs(i)); %get serial data from teensy if any still available
             fclose(vs(i).controller); %close connection to teensy
-        end
-        
-    case 'Get-Version'
-        for i=1:length(vs)
-            fwrite(vs(i).controller,0,'uint8'); %command to send back version number
-            bytes = fread(vs(i).controller,4,'uint8')';
-            versionID = typecast(uint8(bytes),'single');
-            fprintf(['Teensy program version ID: ' num2str(versionID) ' \n']);
         end
         
     case 'Start-Pattern'

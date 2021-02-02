@@ -59,7 +59,7 @@ void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW,
 Adafruit_GC9307 tft = Adafruit_GC9307(TFT_CS, TFT_DC, TFT_RST);
 
 void setup(void) {
-  Serial.begin(9600);
+  Serial.begin(9600); //on the Teensy, this doesn't set the speed -- it's 12 Mbit/sec no matter what
   Serial.println(F("GC9307 Display Test"));
   tft.init(width, height); //initialize the display
   tft.setSPISpeed(96000000); //set this to be as fast as the display can handle
@@ -98,74 +98,77 @@ void loop() { //main program loop
   
   //read incoming command and data over serial
   commandID = readSerialMessage(); //read incoming message ID byte (specifies what data is coming next)
-  if (commandID!=0) {
-    switch (commandID) {
-      case 0: //command to send version ID back over serial
-        serialWriteFloat(versionID);
-        break;
-        
-      case 101: //command to set parameters (and possibly start displaying the pattern)
-        wait4Serial(readDelay, 21); //wait for 21 available bytes
+  switch (commandID) {
+    case 0: //command to send version ID back over serial
+      serialWriteFloat(versionID);
+      break;
+      
+    case 101: //command to set parameters (and possibly start displaying the pattern)
+      wait4Serial(readDelay, 21); //wait for 21 available bytes
 
-        startCommand = readSerialMessage(); //byte 1
-        patternType = readSerialMessage(); //byte 2
-        for (r=0;r<3;r++) {
-          for (c=0;c<3;c++) {
-            colorBytes[r][c] = readSerialMessage(); //bytes 3-11
-          }
+      startCommand = readSerialMessage(); //byte 1
+      patternType = readSerialMessage(); //byte 2
+      for (r=0;r<3;r++) {
+        for (c=0;c<3;c++) {
+          colorBytes[r][c] = readSerialMessage(); //bytes 3-11
         }
-        barWidth = readSerialMessage(); //byte 12
-        numGratings = readSerialMessage(); //byte 13
-        angleBytes[0] = readSerialMessage(); //byte 14
-        angleBytes[1] = readSerialMessage(); //byte 15
-        temporalFrequencyDHz = readSerialMessage(); //byte 16
-        centerPosition[0] = readSerialMessage(); //byte 17
-        centerPosition[1] = readSerialMessage(); //byte 18
-        preDelayDs = readSerialMessage(); //byte 19
-        durationDs = readSerialMessage(); //byte 20
-        wait4Trigger = readSerialMessage(); //byte 21
-        
-        //fill screen with background color, if changed
-        backgroundColor = colorBytes[2][2]; //add blue value to lowest 5 bits
-        backgroundColor = backgroundColor<<6; //shift blue over by 6 bits, leaving lower 6 bits empty now
-        backgroundColor |= colorBytes[2][1]; //add green value to lowest 6 bits
-        backgroundColor = backgroundColor<<5; //shift blue/green over by 5 bits, leaving lowest 5 empty
-        backgroundColor |= colorBytes[2][0]; //add red value to lowest 5 bits
-        if (backgroundColor!=prevBackgroundColor) {
-          //write new background color to EEPROM
-          for (i=0;i<3;i++) {
-            EEPROM.write(backgroundEPPA[i],colorBytes[2][i]);
-          }
-          //fill screen with new background color
-          tft.fillScreen(backgroundColor);
-          prevBackgroundColor = backgroundColor;
+      }
+      barWidth = readSerialMessage(); //byte 12
+      numGratings = readSerialMessage(); //byte 13
+      angleBytes[0] = readSerialMessage(); //byte 14
+      angleBytes[1] = readSerialMessage(); //byte 15
+      temporalFrequencyDHz = readSerialMessage(); //byte 16
+      centerPosition[0] = readSerialMessage(); //byte 17
+      centerPosition[1] = readSerialMessage(); //byte 18
+      preDelayDs = readSerialMessage(); //byte 19
+      durationDs = readSerialMessage(); //byte 20
+      wait4Trigger = readSerialMessage(); //byte 21
+      
+      //fill screen with background color, if changed
+      backgroundColor = colorBytes[2][2]; //add blue value to lowest 5 bits
+      backgroundColor = backgroundColor<<6; //shift blue over by 6 bits, leaving lower 6 bits empty now
+      backgroundColor |= colorBytes[2][1]; //add green value to lowest 6 bits
+      backgroundColor = backgroundColor<<5; //shift blue/green over by 5 bits, leaving lowest 5 empty
+      backgroundColor |= colorBytes[2][0]; //add red value to lowest 5 bits
+      if (backgroundColor!=prevBackgroundColor) {
+        //write new background color to EEPROM
+        for (i=0;i<3;i++) {
+          EEPROM.write(backgroundEPPA[i],colorBytes[2][i]);
         }
-        break;
+        //fill screen with new background color
+        tft.fillScreen(backgroundColor);
+        prevBackgroundColor = backgroundColor;
+      }
+      break;
 
-      case 110: //set demo mode off
-        demo = commandID;
-        if (demo!=EEPROM.read(demoEPPA)) {
-          EEPROM.write(demoEPPA, demo);
-          delay(10);
-        }
-        //send message confirming that demo mode is off
-        Serial.write(112);
-        Serial.write(212);
-        break;
-        
-      case 111: //set demo mode on
-        demo = commandID;
-        if (demo!=EEPROM.read(demoEPPA)) {
-          EEPROM.write(demoEPPA, demo);
-          delay(10);
-        }
-        break;
-        
-      default: //give error message if command ID not recognized
-        Serial.write(225); //ID that command was not recognized
-        Serial.write(commandID);
-        break;
-    }
+    case 110: //set demo mode off
+      demo = commandID;
+      if (demo!=EEPROM.read(demoEPPA)) {
+        EEPROM.write(demoEPPA, demo);
+        delay(10);
+      }
+      //send message confirming that demo mode is off
+      Serial.write(112);
+      Serial.write(212);
+      break;
+      
+    case 111: //set demo mode on
+      demo = commandID;
+      if (demo!=EEPROM.read(demoEPPA)) {
+        EEPROM.write(demoEPPA, demo);
+        delay(10);
+      }
+      break;
+
+    case 121: //send teensy timestamps (for PC/Teensy clock synchronization)
+      startTime = millis(); 
+      serialWriteLong(startTime); //send time in ms from teensy program start
+      break;
+      
+    default: //give error message if command ID not recognized
+      Serial.write(225); //ID that command was not recognized
+      Serial.write(commandID);
+      break;
   }
   
   //display pattern (if start command was received)
