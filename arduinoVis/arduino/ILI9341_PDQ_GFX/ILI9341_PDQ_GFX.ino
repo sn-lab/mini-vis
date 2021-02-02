@@ -1,23 +1,19 @@
-#include <Adafruit_GFX.h>    // Core graphics library from Adafruit, slightly modified
-#include "Adafruit_GC9307.h" // Driver for GC9307-based display (modified from Adafruit_ST7789)
-#include <SPI.h>             // SPI library for communication to the display
-#include <EEPROM.h>          // EEPROM library (for seldom-used on-board data storage)
-#include "logo_bitmap.h"     // hex bitmap of Cornell Engineering and SN-lab logos
+//include necessary libraries
+#include "SPI.h"
+#include <PDQ_GFX.h>        // PDQ: Core graphics library
+#include "PDQ_ILI9341_config.h"     // PDQ: ILI9341 pins and other setup for this sketch
+#include <PDQ_ILI9341.h>      // PDQ: Hardware-specific driver library
+PDQ_ILI9341 tft;      // PDQ: create LCD object (using pins in "PDQ_ILI9341_config.h")
 
-#define TFT_CS  10 // chip-select pin
-#define TFT_RST 14 // reset pin
-#define TFT_DC  6 // data/command pin
-#define TRIG_OUT 0 // start-trigger output pin
-#define TRIG_IN 1 //start-trigger input 
+//settings for libraries
+extern "C" char __data_start[];    // start of SRAM data
+extern "C" char _end[];     // end of SRAM data (used to check amount of SRAM this program's variables use)
+extern "C" char __data_load_end[];  // end of FLASH (used to check amount of Flash this program's code and data uses)
 
-//initialize program basics
-int width = 240; // width of display in pixels
-int height = 210; // height of display in pixels
-float pi = 3.14159;
-int demoEPPA = 0; // eeprom address for stored demo byte
-byte demo; // 111=run demo, 110=don't run demo
-int backgroundEPPA[3] = {1, 2, 3}; //eeprom address for background color RGB values;
-byte backgroundRGB[3]; //[red, green, blue] color values of display background
+//pinouts
+#define BACKLIGHT 6
+#define TRIG_OUT 3
+#define TRIG_IN 4
 
 //initialize default pattern parameters
 uint8_t commandID = 0;
@@ -37,61 +33,37 @@ unsigned long startTime = 0;
 
 //initialize other common variables
 uint8_t readDelay = 100; //duration (in ms) between checking for new incoming serial data
-int i, r, c, e, startCommand = 0;
+int i, ii, r, c, e, startCommand = 0;
+int width, height, backlightState;
+float pi = 3.14159;
 byte * bytes4x;
 unsigned long startMs, endMs, startUs, endUs;
 float durUs;
-uint16_t backgroundColor, prevBackgroundColor;
-float versionID = 9307.1;
+uint16_t backgroundColor = 15;
+uint16_t prevBackgroundColor;
+float versionID = 9341.1;
 
-//create prototypes for every function in this program (I still don't know why this is necessary...)
-void runDemo();
-void wait4Serial(uint8_t wait, int num2wait4);
-uint8_t readSerialMessage();
-void serialWriteLong(unsigned long UL);
-void serialWriteFloat(float F);
-float deg2rad(uint16_t deg);
-void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW, 
-        uint8_t aBytes[2], uint8_t freq, uint8_t color[3][3], uint8_t pre, 
-        uint8_t dur, int wait4Trig, unsigned long &startT, float &bmark);
-        
-//instantiate display with driver for GC9307-based display
-Adafruit_GC9307 tft = Adafruit_GC9307(TFT_CS, TFT_DC, TFT_RST);
 
-void setup(void) {
-  Serial.begin(9600); //on the Teensy, this doesn't set the speed -- it's 12 Mbit/sec no matter what
-  Serial.println(F("GC9307 Display Test"));
-  tft.init(width, height); //initialize the display
-  tft.setSPISpeed(96000000); //set this to be as fast as the display can handle
-  Serial.println(F("Initialized"));
-  
-  //check EEPROM storage for demo byte, write 1 to it if it hasn't been set yet
-  demo = EEPROM.read(demoEPPA);
-  if (demo!=110 && demo!=111) { //if demo byte hasn't bee stored yet?
-    demo = 111;
-    EEPROM.write(demoEPPA, demo);
-    delay(10);
-  }
-
-  //check EEPROM for stored backgroundColor 
-  for (i=0;i<3;i++) {
-    backgroundRGB[i] = EEPROM.read(backgroundEPPA[i]);
-  }
-  backgroundColor = backgroundRGB[2]; //add blue value to lowest 5 bits
-  backgroundColor = backgroundColor<<6; //shift blue over by 6 bits, leaving lower 6 bits empty now
-  backgroundColor |= backgroundRGB[1]; //add green value to lowest 6 bits
-  backgroundColor = backgroundColor<<5; //shift blue/green over by 5 bits, leaving lowest 5 empty
-  backgroundColor |= backgroundRGB[0]; //add red value to lowest 5 bits
-  prevBackgroundColor = backgroundColor;
-  tft.fillScreen(backgroundColor);
-
-  pinMode(TRIG_IN, INPUT);
+//setup (runs once)
+void setup() {
+  Serial.begin(9600); 
   pinMode(TRIG_OUT, OUTPUT);
-  digitalWrite(TRIG_OUT, LOW);
+  pinMode(BACKLIGHT, OUTPUT);
+  digitalWrite(BACKLIGHT, LOW);
+  backlightState = 0;
+  pinMode(TRIG_IN, INPUT); 
+  tft.begin();
+  delay(100);
+
+  tft.setRotation(0);
+  width = tft.width(); // width of display in pixels
+  height = tft.height(); // height of display in pixels
+  tft.fillScreen(backgroundColor);
+  prevBackgroundColor = backgroundColor;
 }
 
+
 void loop() { //main program loop
-  if (demo==111) {runDemo();} //self-explanatory, right?
 
   //wait for incoming instructions over serial connection
   wait4Serial(readDelay, 1); //wait for (at least) 1 available byte
@@ -131,32 +103,9 @@ void loop() { //main program loop
       backgroundColor = backgroundColor<<5; //shift blue/green over by 5 bits, leaving lowest 5 empty
       backgroundColor |= colorBytes[2][0]; //add red value to lowest 5 bits
       if (backgroundColor!=prevBackgroundColor) {
-        //write new background color to EEPROM
-        for (i=0;i<3;i++) {
-          EEPROM.write(backgroundEPPA[i],colorBytes[2][i]);
-        }
         //fill screen with new background color
         tft.fillScreen(backgroundColor);
         prevBackgroundColor = backgroundColor;
-      }
-      break;
-
-    case 110: //set demo mode off
-      demo = commandID;
-      if (demo!=EEPROM.read(demoEPPA)) {
-        EEPROM.write(demoEPPA, demo);
-        delay(10);
-      }
-      //send message confirming that demo mode is off
-      Serial.write(112);
-      Serial.write(212);
-      break;
-      
-    case 111: //set demo mode on
-      demo = commandID;
-      if (demo!=EEPROM.read(demoEPPA)) {
-        EEPROM.write(demoEPPA, demo);
-        delay(10);
       }
       break;
 
@@ -167,6 +116,36 @@ void loop() { //main program loop
 
     case 131: //reset background
       tft.fillScreen(backgroundColor);
+      break;
+
+    case 141: //turn on backlight
+      digitalWrite(BACKLIGHT,HIGH);
+      backlightState = 1;
+      break;
+      
+    case 142: //turn off backlight
+      digitalWrite(BACKLIGHT,LOW);
+      backlightState = 0;
+      break;
+
+    case 151: //display number on screen for the specified duration
+      int displayNum = readSerialMessage();
+      if (backlightState==0) { //if backlight is off, temporarily turn it on
+        digitalWrite(BACKLIGHT, HIGH);
+      }
+      tft.setCursor(round(width/2), round(height/3));
+      tft.setTextColor(ILI9341_WHITE);    
+      tft.setTextSize(3);
+      //show number on screen in white and black (so it's always visible)
+      tft.println(displayNum); 
+      tft.setTextColor(ILI9341_BLACK);  
+      tft.println(displayNum); 
+      delay(3000);
+      if (backlightState==0) {
+        digitalWrite(BACKLIGHT, LOW);
+      }
+      tft.fillScreen(backgroundColor);
+      break;
       
     default: //give error message if command ID not recognized
       Serial.write(225); //ID that command was not recognized
@@ -226,19 +205,23 @@ uint8_t readSerialMessage() {
   return msg;
 }
 
+
 void serialWriteLong(unsigned long UL) {
   bytes4x = (byte *) &UL;
   Serial.write(bytes4x,4); //send 1 unsigned long as 4 bytes
 }
+
 
 void serialWriteFloat(float F) {
   bytes4x = (byte *) &F;
   Serial.write(bytes4x,4); //send 1 float as 4 bytes
 }
 
+
 float deg2rad(uint16_t deg) {
   return (deg*pi/180); //convert degrees to radians
 }
+
 
 void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW, 
         uint8_t aBytes[2], uint8_t freq, uint8_t color[3][3], uint8_t pre, 
@@ -251,15 +234,15 @@ void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW,
   
   int angle = aBytes[0] + aBytes[1];
   double radius = sqrt(2*sq(barW*numrepeats))-0.5;
-  int blx = round(pos[0]+120.5+radius*cos(deg2rad((-angle+225+360)%360))); //bottom-left corner x-coord
-  int tlx = round(pos[0]+120.5+radius*cos(deg2rad((-angle+135+360)%360))); //top-left corner x-coord
-  int brx = round(pos[0]+120.5+radius*cos(deg2rad((-angle+315+360)%360))); //bottom-right corner x-coord
+  int blx = round(pos[0]+0.5+(width/2)+radius*cos(deg2rad((-angle+225+360)%360))); //bottom-left corner x-coord
+  int tlx = round(pos[0]+0.5+(width/2)+radius*cos(deg2rad((-angle+135+360)%360))); //top-left corner x-coord
+  int brx = round(pos[0]+0.5+(width/2)+radius*cos(deg2rad((-angle+315+360)%360))); //bottom-right corner x-coord
 
-  int bly = round(pos[1]+90.5+radius*sin(deg2rad((-angle+225+360)%360))); //bottom-left corner y-coord
-  int tly = round(pos[1]+90.5+radius*sin(deg2rad((-angle+135+360)%360))); //top-left corner y-coord
-  int bry = round(pos[1]+90.5+radius*sin(deg2rad((-angle+315+360)%360))); //bottom-right corner y-coord
+  int bly = round(pos[1]+0.5+(height/2)+radius*sin(deg2rad((-angle+225+360)%360))); //bottom-left corner y-coord
+  int tly = round(pos[1]+0.5+(height/2)+radius*sin(deg2rad((-angle+135+360)%360))); //top-left corner y-coord
+  int bry = round(pos[1]+0.5+(height/2)+radius*sin(deg2rad((-angle+315+360)%360))); //bottom-right corner y-coord
 
-  int primary[500], secondary[500], x0[500], x1[500], y0[500], y1[500];
+  int primary[1000], secondary[1000], x0[1000], x1[1000], y0[1000], y1[1000];
   int primaryDelta, secondaryDelta;
   int Lidx, Cidx;
   int dx = brx-blx;
@@ -326,7 +309,7 @@ void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW,
   //initialize more variables
   unsigned long shiftPeriodUs;
   unsigned long flickerPeriodUs;
-  int colorVec[500], prevColorVec[500];
+  int colorVec[1000], prevColorVec[1000];
   int edges[2*numrepeats];
   int colorRGB[3];
   int abortPattern = 0;
@@ -403,6 +386,10 @@ void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW,
           }
         }
       }
+      //return to background color
+      for (i=0; i<numLines; i++) {
+        tft.drawLine(x0[i], y0[i], x1[i], y1[i], colorMap[2]); 
+      }
       break;
     
     case 2: //draw sine-wave gratings - updating every line, every time
@@ -448,6 +435,10 @@ void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW,
           }
         }
       }
+      //return to background color
+      for (i=0; i<numLines; i++) {
+        tft.drawLine(x0[i], y0[i], x1[i], y1[i], colorMap[2]); 
+      }
       break;
       
     case 3: //draw flicker stimulus
@@ -480,126 +471,108 @@ void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW,
           }
         }
       }
+      //return to background color
+      for (i=0; i<numLines; i++) {
+        tft.drawLine(x0[i], y0[i], x1[i], y1[i], colorMap[2]); 
+      }
+      break;
+
+      case 4: //draw static square grating
+      startMs = millis();
+      for (i=0;i<numLines;i++) {
+        if ((i%(numBar1Columns+numBar2Columns))<numBar1Columns) {
+          colorVec[i] = 1;
+        } else {
+          colorVec[i] = 0;
+        }
+      }
+      //draw full grating pattern in its starting position
+      for (i=0; i<numLines; i++) {
+        tft.drawLine(x0[i], y0[i], x1[i], y1[i], colorMap[colorVec[i]]); 
+      }
+      bmark = 25;
+      while ((millis()-startMs)<(dur*100)) {
+        delay(1);
+      }
+      //return to background color
+      for (i=0; i<numLines; i++) {
+        tft.drawLine(x0[i], y0[i], x1[i], y1[i], colorMap[2]); 
+      }
+      break;
+      
+      case 5: //use backlight to flicker
+        flickerPeriodUs = 1000000/(float(freq)/10);
+        startMs = millis();
+        while ((millis()-startMs)<(dur*100)) {
+          digitalWrite(BACKLIGHT,HIGH);
+          if ((flickerPeriodUs/2)>16380) {
+            delay((flickerPeriodUs/2)/1000);
+          } else {
+            delayMicroseconds(flickerPeriodUs/2);
+          }
+          digitalWrite(BACKLIGHT,LOW);
+          if ((flickerPeriodUs/2)>16380) {
+            delay((flickerPeriodUs/2)/1000);
+          } else {
+            delayMicroseconds(flickerPeriodUs/2);
+          }
+        }
+        bmark = 25;
+        break;
+
+      case 6: //draw square gratings, but without drawing the full pattern first
+        shiftPeriodUs = (1000000/(float(freq)/10))/(float(numLines)/float(numrepeats));
+      startMs = millis();
+      
+      //get "column" indices of edges (for square-wave gratings)
+      for (i=0;i<numrepeats;i++) {
+        edges[2*i] = numBar1Columns+((numBar1Columns+numBar2Columns)*i)-1;
+        edges[(2*i)+1] = (numBar1Columns+numBar2Columns)*(i+1)-1;
+      }
+      for (i=0;i<numLines;i++) {
+        if ((i%(numBar1Columns+numBar2Columns))<numBar1Columns) {
+          colorVec[i] = 1;
+        } else {
+          colorVec[i] = 0;
+        }
+      }
+      //draw advancing/receding edges only to save time (everything else stays the same)
+      c=0;
+      Cidx = 0;
+      while ((millis()-startMs)<(dur*100)) {
+        startUs = micros();
+        for (i=0; i<2*numrepeats; i++) {
+          e = edges[i];
+          Lidx = (e+c)%numLines; //line index
+          Cidx = 1-Cidx; //to alternate between color[0] and color[1]
+          tft.drawLine(x0[Lidx], y0[Lidx], x1[Lidx], y1[Lidx], colorMap[Cidx]); 
+        }
+        c++;     
+        endUs = micros();
+        durUs = endUs-startUs;
+        bmark = numrepeats*(1000000/durUs)/numLines;
+        if (durUs<shiftPeriodUs) {
+          if ((shiftPeriodUs-durUs)>16380) {
+            delay((shiftPeriodUs-durUs)/1000);
+          } else {
+            delayMicroseconds(shiftPeriodUs-durUs);
+          }
+        }
+      }
+      //return to background color (by continuing to draw advancing edges only)
+      Cidx = 2;
+      for (ii=0; ii<(numLines/(2*numrepeats)); ii++) {
+        for (i=0; i<2*numrepeats; i++) {
+          e = edges[i];
+          Lidx = (e+c)%numLines; //line index
+          Cidx = 1-Cidx; //to alternate between color[0] and color[1]
+          tft.drawLine(x0[Lidx], y0[Lidx], x1[Lidx], y1[Lidx], colorMap[Cidx]); 
+        }
+        c++;  
+      }
       break;
   }
 
   //set output trigger back to low
   digitalWrite(TRIG_OUT, LOW);
-  
-  //return to background color
-  for (i=0; i<numLines; i++) {
-    tft.drawLine(x0[i], y0[i], x1[i], y1[i], colorMap[2]); 
-  }
-}
-
-void runDemo() {
-  Serial.println("Demo mode for Teensy Display");
-
-  while (Serial.available()<1) {
-    
-    //fill screen with solid color
-    uint16_t time = millis();
-    tft.fillScreen(ST77XX_BLACK);
-    time = millis() - time;
-    Serial.print(F("fillScreen (240x210): "));
-    Serial.print(time, DEC);
-    Serial.println(F(" ms draw time"));
-    delay(1000);
-  
-    //display bitmap
-    time = millis();
-    tft.drawBitmap(0, 0, logos, 240, 210, ST77XX_WHITE);
-    time = millis() - time;
-    Serial.print(F("drawBitmap (240x210): "));
-    Serial.print(time, DEC);
-    Serial.println(F(" ms draw time"));
-    delay(2000);
-    tft.fillScreen(ST77XX_BLACK);
-    delay(1000);
-    
-    // draw sine-wave gratings at 0.5 Hz temporal frequency
-    numGratings = 3;
-    barWidth = 40;
-    angleBytes[0] = 0;
-    angleBytes[1] = 0;
-    temporalFrequencyDHz = 5; //0.5 Hz
-    preDelayDs = 0;
-    durationDs = 20; //2 s
-    patternType = 2; //1=square-wave grating, 2=sine-wave grating, 3=flicker
-    drawPattern(patternType, centerPosition, numGratings, barWidth, angleBytes, temporalFrequencyDHz, colorBytes, preDelayDs, durationDs, wait4Trigger, startTime, benchmarkHz);
-    Serial.print(F("sine-wave gratings at 0.5 Hz (240x210): "));
-    Serial.print(benchmarkHz);
-    Serial.println(F(" Hz at max speed "));
-    delay(2000);
-    tft.fillScreen(ST77XX_BLACK);
-
-    // draw square-wave gratings at 5 Hz temporal frequency
-    temporalFrequencyDHz = 50; //5 Hz
-    patternType = 1; //1=square-wave grating, 2=sine-wave grating, 3=flicker
-    drawPattern(patternType, centerPosition, numGratings, barWidth, angleBytes, temporalFrequencyDHz, colorBytes, preDelayDs, durationDs, wait4Trigger, startTime, benchmarkHz);
-    Serial.print(F("square-wave gratings at 5 Hz (240x210): "));
-    Serial.print(benchmarkHz);
-    Serial.println(F(" Hz at max speed "));
-    delay(2000);
-    tft.fillScreen(ST77XX_BLACK);
-
-    if (Serial.available()>0) {
-      break;
-    }
-    
-    // draw sine-wave gratings at 5 Hz temporal frequency
-    durationDs = 10; //1 s
-    numGratings = 1;
-    barWidth = 40;
-    temporalFrequencyDHz = 50; //5 Hz
-    patternType = 2; //1=square-wave grating, 2=sine-wave grating, 3=flicker
-    drawPattern(patternType, centerPosition, numGratings, barWidth, angleBytes, temporalFrequencyDHz, colorBytes, preDelayDs, durationDs, wait4Trigger, startTime, benchmarkHz);
-    Serial.print(F("sine-wave gratings at 5 Hz (80x80): "));
-    Serial.print(benchmarkHz);
-    Serial.println(F(" Hz at max speed "));
-    delay(2000);
-    tft.fillScreen(ST77XX_BLACK);
-    
-    // draw square-wave gratings at 10 Hz temporal frequency
-    temporalFrequencyDHz = 100; //10 Hz
-    patternType = 1; //1=square-wave grating, 2=sine-wave grating, 3=flicker
-    drawPattern(patternType, centerPosition, numGratings, barWidth, angleBytes, temporalFrequencyDHz, colorBytes, preDelayDs, durationDs, wait4Trigger, startTime, benchmarkHz);
-    Serial.print(F("square-wave gratings at 10 Hz (80x80): "));
-    Serial.print(benchmarkHz);
-    Serial.println(F(" Hz at max speed "));
-    delay(2000);
-    tft.fillScreen(ST77XX_BLACK);
-
-    if (Serial.available()>0) {
-      break;
-    }
-    
-    //draw square-wave gratings for multiple directions - every 15 degrees
-    patternType = 1;
-    numGratings = 1;
-    centerPosition[0] = 0;
-    centerPosition[1] = 0;
-    barWidth = 60;
-    temporalFrequencyDHz = 20; //2 Hz
-    durationDs = 10; //1 s
-    Serial.println(F("square-wave gratings at 2 Hz (120x120), every 15 degrees:"));
-    for (int a2=0;a2<=180;a2+=180) {
-      angleBytes[1] = a2;
-      for (int a=0;a<180;a+=15){
-        angleBytes[0] = a;
-        Serial.print("angle ");
-        Serial.print(a+a2);
-        Serial.print("    ");
-        drawPattern(patternType, centerPosition, numGratings, barWidth, angleBytes, temporalFrequencyDHz, colorBytes, preDelayDs, durationDs, wait4Trigger, startTime, benchmarkHz);
-        Serial.print(benchmarkHz);
-        Serial.println(" Hz at max speed");
-      }
-      if (Serial.available()>0) {
-        break;
-      }
-    }
-    delay(2000);
-    tft.fillScreen(ST77XX_BLACK);
-    Serial.println("");
-  }
 }

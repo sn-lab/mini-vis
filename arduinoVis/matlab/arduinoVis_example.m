@@ -1,7 +1,7 @@
 %% open connection to controller
 clear vs %clear "vis-struct"
-vs.port = 'COM6';
-vs = teensyComm(vs, 'Connect');
+vs.port = 'COM7';
+vs = arduinoVisComm(vs, 'Connect');
 
 %% set experiment parameters
 vs.expname = 'directional_test_stimulus_1';
@@ -21,15 +21,15 @@ param.frequency = 1.5; % temporal frequency of grating (Hz) [0.1-25]
 param.position = [0, 0]; % x,y position of grating relative to display center (pixels)
 param.predelay = 2; % delay after start command sent before grating pattern begins (s) [0.1-25.5]
 param.duration = 2; % duration that grating pattern is shown (s) [0.1-25.5]
-param.trigger = 0; % tells the teensy whether to wait for an input trigger signal (TTL) to start or not
+param.trigger = 0; % tells the arduinoVis whether to wait for an input trigger signal (TTL) to start or not
 
 %% send stimulus
 tic
-vs = teensyComm(vs, 'Start-Pattern', param); %send pattern parameters and display the pattern
+vs = arduinoVisComm(vs, 'Start-Pattern', param); %send pattern parameters and display the pattern
 while toc<vs.trial_duration %delay until next trial
     pause(0.001);
 end
-vs = teensyComm(vs, 'Get-Data'); %retrieve data sent from teensy about displayed pattern
+vs = arduinoVisComm(vs, 'Get-Data'); %retrieve data sent from arduinoVis about displayed pattern
 
 
 %% save data for current experiment
@@ -42,4 +42,4 @@ save(fullfile(vs.directory,filename),'vs');
 
 
 %% close connection
-vs = teensyComm(vs, 'Disconnect'); %close connection to controller
+vs = arduinoVisComm(vs, 'Disconnect'); %close connection to controller

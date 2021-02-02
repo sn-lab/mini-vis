@@ -8,6 +8,7 @@ function vs = teensyComm(vs, command, param)
 % 'Disconnect': closes serial connection to Arduino
 % 'Start-Pattern': start pattern with the current pattern parameters (ID [101 1])
 % 'Send-Parameters': sets next pattern parameters -- updates background but doesn't immediately start pattern (ID [101 0])
+% 'Reset-Background': fills screen with last used background color (ID 131)
 % 'Get-Data': retrieve data sent back from controller 
 % 'Demo-On': turns teensy demo mode on (ID 111)
 % 'Demo-Off': turns teensy demo mode off (ID 110)
@@ -48,13 +49,21 @@ switch command
             fwrite(vs(i).controller,0,'uint8'); %command to send back version number
             bytes = fread(vs(i).controller,4,'uint8')';
             versionID = typecast(uint8(bytes),'single');
-            vs(i).teensyversion = versionID;
+            vs(i).programversion = versionID;
+            
+            %reset teensy background
+            teensyComm(vs(i),'Reset-Background');
         end
         
     case 'Disconnect'
         for i=1:length(vs)
             vs(i) = teensy2matlab(vs(i)); %get serial data from teensy if any still available
             fclose(vs(i).controller); %close connection to teensy
+        end
+        
+    case 'Reset-Background'
+        for i=1:length(vs)
+            fwrite(vs(i).controller,131,'uint8'); %command to fill screen with backgroundcolor
         end
         
     case 'Start-Pattern'
