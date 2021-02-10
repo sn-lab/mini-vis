@@ -167,6 +167,7 @@ void loop() { //main program loop
 
     case 131: //reset background
       tft.fillScreen(backgroundColor);
+      break;
       
     default: //give error message if command ID not recognized
       Serial.write(225); //ID that command was not recognized
@@ -352,7 +353,7 @@ void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW,
 
   //wait if predelay is specified
   if ((millis()-startMs)<(pre*100)) {
-    delay((startMs+(pre*100))-(millis()-startMs));
+    delay((startMs+(pre*100))-millis());
   }
   switch (type){
     case 1: //draw square-wave gratings, updating only the lines that change color
