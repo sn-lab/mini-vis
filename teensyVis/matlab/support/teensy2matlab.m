@@ -44,7 +44,7 @@ while vs.controller.BytesAvailable>0
             angle2b = fread(vs.controller,2,'uint8'); 
             vs.data(row,17) = sum(angle2b); %angle
             vs.data(row,18) = double(fread(vs.controller,1,'uint8'))/10; %frequency
-            vs.data(row,19:20) = fread(vs.controller,2,'uint8')'; %position
+            vs.data(row,19:20) = double(fread(vs.controller,2,'uint8')')-128; %position
             vs.data(row,21) = double(fread(vs.controller,1,'uint8'))/10; %predelay
             vs.data(row,22) = double(fread(vs.controller,1,'uint8'))/10; %duration
             vs.data(row,23) = fread(vs.controller,1,'uint8'); %trigger

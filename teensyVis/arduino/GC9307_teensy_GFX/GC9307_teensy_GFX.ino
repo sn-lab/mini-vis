@@ -252,13 +252,16 @@ void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW,
   
   int angle = aBytes[0] + aBytes[1];
   double radius = sqrt(2*sq(barW*numrepeats))-0.5;
-  int blx = round(pos[0]+120.5+radius*cos(deg2rad((-angle+225+360)%360))); //bottom-left corner x-coord
-  int tlx = round(pos[0]+120.5+radius*cos(deg2rad((-angle+135+360)%360))); //top-left corner x-coord
-  int brx = round(pos[0]+120.5+radius*cos(deg2rad((-angle+315+360)%360))); //bottom-right corner x-coord
+  float xpos = pos[0]-128+120.5;
+  float ypos = pos[1]-128+90.5;
+  
+  int blx = round(xpos+radius*cos(deg2rad((-angle+225+360)%360))); //bottom-left corner x-coord
+  int tlx = round(xpos+radius*cos(deg2rad((-angle+135+360)%360))); //top-left corner x-coord
+  int brx = round(xpos+radius*cos(deg2rad((-angle+315+360)%360))); //bottom-right corner x-coord
 
-  int bly = round(pos[1]+90.5+radius*sin(deg2rad((-angle+225+360)%360))); //bottom-left corner y-coord
-  int tly = round(pos[1]+90.5+radius*sin(deg2rad((-angle+135+360)%360))); //top-left corner y-coord
-  int bry = round(pos[1]+90.5+radius*sin(deg2rad((-angle+315+360)%360))); //bottom-right corner y-coord
+  int bly = round(ypos+radius*sin(deg2rad((-angle+225+360)%360))); //bottom-left corner y-coord
+  int tly = round(ypos+radius*sin(deg2rad((-angle+135+360)%360))); //top-left corner y-coord
+  int bry = round(ypos+radius*sin(deg2rad((-angle+315+360)%360))); //bottom-right corner y-coord
 
   int primary[500], secondary[500], x0[500], x1[500], y0[500], y1[500];
   int primaryDelta, secondaryDelta;

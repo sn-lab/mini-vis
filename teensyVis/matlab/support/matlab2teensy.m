@@ -99,7 +99,7 @@ fwrite(vs.controller,param.barwidth,'uint8');
 fwrite(vs.controller,param.numgratings,'uint8');
 fwrite(vs.controller,param.angle2b,'uint8');
 fwrite(vs.controller,param.frequency*10,'uint8'); %converts frequency to units of 100 mHz for uint8 data transfer
-fwrite(vs.controller,param.position,'uint8');
+fwrite(vs.controller,param.position+128,'uint8'); %puts [0,0] at [128,128] to accommodate negative numbers in uint8
 fwrite(vs.controller,param.predelay*10,'uint8'); %converts pre delay to units of 100 ms for uint8 data transfer
 fwrite(vs.controller,param.duration*10,'uint8'); %converts duration to units of 100 ms for uint8 data transfer
 fwrite(vs.controller,param.trigger,'uint8');
