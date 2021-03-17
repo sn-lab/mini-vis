@@ -7,7 +7,7 @@ vs.port = 'COM11';
 vs = teensyComm(vs, 'Connect');
 
 %% set experiment parameters
-vs.expname = 'thy1_gcamp6s_directiontuning topspot';
+vs.expname = 'thy1_gcamp6s_directiontuning test';
 vs.directory = 'C:\Users\Schafferlab\Desktop\Visual Cortex';
 vs.trial_duration = 8;
 vs.randomize = 1; %1=randomize order of conditions, 0=don't randomize
