@@ -355,9 +355,10 @@ void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW,
   digitalWrite(TRIG_OUT, HIGH);
 
   //wait if predelay is specified
-  if ((millis()-startMs)<(pre*100)) {
-    delay((startMs+(pre*100))-millis());
+  if (pre>0) {
+    delay(pre*100);
   }
+  
   switch (type){
     case 1: //draw square-wave gratings, updating only the lines that change color
       shiftPeriodUs = (1000000/(float(freq)/10))/(float(numLines)/float(numrepeats));
@@ -460,16 +461,7 @@ void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW,
       while ((millis()-startMs)<(dur*100)) {
         for (c=0; c<2; c++) {
           startUs = micros();
-          for (i=0; i<numLines; i+=4) { //draw 1st 1/4 bottom-top, left-right
-            tft.drawLine(x0[i], y0[i], x1[i], y1[i], colorMap[c]); 
-          }
-          for (i=numLines-1+(numLines%2); i>-1; i+=-4) { //draw 2nd 1/4 top-bottom, right-left
-            tft.drawLine(x1[i], y1[i], x0[i], y0[i], colorMap[c]); 
-          }
-          for (i=1; i<numLines; i+=4) { //draw 3rd 1/4 top-bottom, left-right
-            tft.drawLine(x1[i], y1[i], x0[i], y0[i], colorMap[c]); 
-          }
-          for (i=numLines-2+(numLines%2); i>-1; i+=-4) { //draw 4th 1/4 bottom-top, right-left
+          for (i=0; i<numLines; i++) { 
             tft.drawLine(x0[i], y0[i], x1[i], y1[i], colorMap[c]); 
           }
           endUs = micros();

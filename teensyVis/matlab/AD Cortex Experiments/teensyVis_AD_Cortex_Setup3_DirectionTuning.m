@@ -11,9 +11,9 @@ vs.expname = 'thy1_gcamp6s_directiontuning test';
 vs.directory = 'C:\Users\Schafferlab\Desktop\Visual Cortex';
 vs.trial_duration = 8;
 vs.randomize = 1; %1=randomize order of conditions, 0=don't randomize
-vs.num_trials = 12;
-vs.num_reps = 5;
-angles = 0:30:330; %only angles are used in this script
+vs.num_trials = 13;
+vs.num_reps = 6;
+angles = [-1 0:30:330]; %only angles are used in this script
 frequencies = [0.5 1 2 4 6 8 10 12]; %default is 2
 contrasts = 0:20;100; %default is 100
 barwidths = [1 2 5 10 20 40]; %default is 20
@@ -23,8 +23,8 @@ default.patterntype = 1; %1 = square-gratings, 2 = sine-gratings, 3 = flicker
 default.bar1color = [0 0 30]; %RGB color values of bar 1 [R=0-31, G=0-63, B=0-31]
 default.bar2color = [0 0 0]; %RGB color values of bar 2
 default.backgroundcolor = [0 0 15]; %RGB color values of background
-default.barwidth = 40; % width of each bar (pixels) (1 pixel ~= 0.58 degrees)
-default.numgratings = 2; % number of bright/dark bars in grating
+default.barwidth = 20; % width of each bar (pixels) (1 pixel ~= 0.58 degrees)
+default.numgratings = 4; % number of bright/dark bars in grating
 default.angle = 0; % angle of grating (degrees) [0=drifting right, positive angles rotate clockwise]
 default.frequency = 1.5; % temporal frequency of grating (Hz) [0.1-25]
 default.position = [0, 0]; % x,y position of grating relative to display center (pixels)
@@ -53,7 +53,13 @@ param = default;
 
 for r = 1:vs.num_reps
     for t = 1:vs.num_trials
-        param.angle = angles(order(r,t));
+        if angles(order(r,t))==-1
+            default.patterntype = 3;
+            param.angle = 30*(r-1);
+        else
+            default.patterntype = 1;
+            param.angle = angles(order(r,t));
+        end
         
         tic
         vs = teensyComm(vs, 'Start-Pattern', param); %send pattern parameters and display the pattern
