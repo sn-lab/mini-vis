@@ -34,7 +34,7 @@ unsigned long startTime = 0;
 //initialize other common variables
 uint8_t readDelay = 100; //duration (in ms) between checking for new incoming serial data
 int i, ii, r, c, e, startCommand = 0;
-int width, height, backlightState;
+int width, height, backlightState, displayNum;
 float pi = 3.14159;
 byte * bytes4x;
 unsigned long startMs, endMs, startUs, endUs;
@@ -109,7 +109,11 @@ void loop() { //main program loop
       }
       break;
 
-    case 121: //send teensy timestamps (for PC/Teensy clock synchronization)
+    case 102: //stop current stimulus
+      startCommand = 0;
+      break; //only applicable during a stimulus
+      
+    case 121: //send timestamps (for PC/microcontroller clock synchronization)
       startTime = millis(); 
       serialWriteLong(startTime); //send time in ms from teensy program start
       break;
@@ -129,7 +133,7 @@ void loop() { //main program loop
       break;
 
     case 151: //display number on screen for the specified duration
-      int displayNum = readSerialMessage();
+      displayNum = readSerialMessage();
       if (backlightState==0) { //if backlight is off, temporarily turn it on
         digitalWrite(BACKLIGHT, HIGH);
       }
@@ -385,6 +389,14 @@ void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW,
             delayMicroseconds(shiftPeriodUs-durUs);
           }
         }
+
+        //check for incoming "stop-stimulus" command
+        if (Serial.available()>0) {
+          if (Serial.peek()==102) {
+            commandID = readSerialMessage(); //to remove byte from buffer
+            dur = (millis()-startMs)/100;
+          }
+        }
       }
       //return to background color
       for (i=0; i<numLines; i++) {
@@ -434,6 +446,14 @@ void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW,
             delayMicroseconds(shiftPeriodUs-durUs);
           }
         }
+
+        //check for incoming "stop-stimulus" command
+        if (Serial.available()>0) {
+          if (Serial.peek()==102) {
+            commandID = readSerialMessage(); //to remove byte from buffer
+            dur = (millis()-startMs)/100;
+          }
+        }
       }
       //return to background color
       for (i=0; i<numLines; i++) {
@@ -470,6 +490,13 @@ void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW,
             }
           }
         }
+        //check for incoming "stop-stimulus" command
+        if (Serial.available()>0) {
+          if (Serial.peek()==102) {
+            commandID = readSerialMessage(); //to remove byte from buffer
+            dur = (millis()-startMs)/100;
+          }
+        }
       }
       //return to background color
       for (i=0; i<numLines; i++) {
@@ -493,6 +520,14 @@ void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW,
       bmark = 25;
       while ((millis()-startMs)<(dur*100)) {
         delay(1);
+
+        //check for incoming "stop-stimulus" command
+        if (Serial.available()>0) {
+          if (Serial.peek()==102) {
+            commandID = readSerialMessage(); //to remove byte from buffer
+            dur = (millis()-startMs)/100;
+          }
+        }
       }
       //return to background color
       for (i=0; i<numLines; i++) {
@@ -515,6 +550,14 @@ void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW,
             delay((flickerPeriodUs/2)/1000);
           } else {
             delayMicroseconds(flickerPeriodUs/2);
+          }
+
+          //check for incoming "stop-stimulus" command
+          if (Serial.available()>0) {
+            if (Serial.peek()==102) {
+              commandID = readSerialMessage(); //to remove byte from buffer
+              dur = (millis()-startMs)/100;
+            }
           }
         }
         bmark = 25;
@@ -556,6 +599,14 @@ void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW,
             delay((shiftPeriodUs-durUs)/1000);
           } else {
             delayMicroseconds(shiftPeriodUs-durUs);
+          }
+        }
+
+        //check for incoming "stop-stimulus" command
+        if (Serial.available()>0) {
+          if (Serial.peek()==102) {
+            commandID = readSerialMessage(); //to remove byte from buffer
+            dur = (millis()-startMs)/100;
           }
         }
       }
