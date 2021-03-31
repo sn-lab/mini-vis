@@ -52,7 +52,9 @@ input('start acquisition loop now, then press any key to continue','s')
 param = default;
 
 for r = 1:vs.num_reps
+    vs.rep = r; %keep this; helps data analaysis later
     for t = 1:vs.num_trials
+        vs.trial = t; %keep this; helps data analaysis later
         if angles(order(r,t))==-1
             default.patterntype = 3;
             param.angle = 30*(r-1);
