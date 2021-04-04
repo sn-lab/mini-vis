@@ -91,18 +91,18 @@ assert(param.trigger==0 | param.trigger==1,'trigger must be 0 or 1');
 
 
 %% send parameters to controller if no errors found
-fwrite(vs.controller,param.patterntype,'uint8'); 
-fwrite(vs.controller,param.bar1color,'uint8');
-fwrite(vs.controller,param.bar2color,'uint8');
-fwrite(vs.controller,param.backgroundcolor,'uint8');
-fwrite(vs.controller,param.barwidth,'uint8');
-fwrite(vs.controller,param.numgratings,'uint8');
-fwrite(vs.controller,param.angle2b,'uint8');
-fwrite(vs.controller,param.frequency*10,'uint8'); %converts frequency to units of 100 mHz for uint8 data transfer
-fwrite(vs.controller,param.position,'uint8');
-fwrite(vs.controller,param.predelay*10,'uint8'); %converts pre delay to units of 100 ms for uint8 data transfer
-fwrite(vs.controller,param.duration*10,'uint8'); %converts duration to units of 100 ms for uint8 data transfer
-fwrite(vs.controller,param.trigger,'uint8');
+write(vs.controller,param.patterntype,'uint8'); 
+write(vs.controller,param.bar1color,'uint8');
+write(vs.controller,param.bar2color,'uint8');
+write(vs.controller,param.backgroundcolor,'uint8');
+write(vs.controller,param.barwidth,'uint8');
+write(vs.controller,param.numgratings,'uint8');
+write(vs.controller,param.angle2b,'uint8');
+write(vs.controller,param.frequency*10,'uint8'); %converts frequency to units of 100 mHz for uint8 data transfer
+write(vs.controller,param.position,'uint8');
+write(vs.controller,param.predelay*10,'uint8'); %converts pre delay to units of 100 ms for uint8 data transfer
+write(vs.controller,param.duration*10,'uint8'); %converts duration to units of 100 ms for uint8 data transfer
+write(vs.controller,param.trigger,'uint8');
     
 
 end

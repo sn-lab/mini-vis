@@ -109,9 +109,9 @@ void loop() { //main program loop
       }
       break;
 
-    case 102: //stop current stimulus
+    case 102: //stop current pattern
       startCommand = 0;
-      break; //only applicable during a stimulus
+      break; //this is really only a meaningful command while a pattern is running
       
     case 121: //send timestamps (for PC/microcontroller clock synchronization)
       startTime = millis(); 
