@@ -11,9 +11,9 @@ extern "C" char _end[];     // end of SRAM data (used to check amount of SRAM th
 extern "C" char __data_load_end[];  // end of FLASH (used to check amount of Flash this program's code and data uses)
 
 //pinouts
-#define BACKLIGHT 6
-#define TRIG_OUT 3
-#define TRIG_IN 4
+#define BACKLIGHT 6 //3
+#define TRIG_OUT 3 //1
+#define TRIG_IN 4 //2
 
 //initialize default pattern parameters
 uint8_t commandID = 0;
@@ -23,7 +23,7 @@ uint8_t barWidth = 40; //width of each dark/bright bar (in pixels) of grating
 uint8_t colorBytes[3][3] = {{0, 0, 30},{0, 0, 0},{0, 0, 15}};
 uint8_t angleBytes[2] = {0, 0}; //angle of pattern, separated into halves for 0-360 deg (1 byte only allows 0-255)
 uint8_t temporalFrequencyDHz = 10; //speed of gratings/flickers (in deci-Hertz)
-uint8_t patternType = 1; //1=square-wave grating, 2=sine-wave grating, 3=flicker
+uint8_t patternType = 1; //1=square-wave grating, 2=sine-wave grating, 3=flicker, ...
 uint8_t preDelayDs = 0; //delay (in s) to wait after start command until pattern is drawn
 uint8_t durationDs = 1; //duration (in deci-seconds) to draw pattern
 uint8_t wait4Trigger = 0; //whether to wait for TRIG_IN signal to start pattern
@@ -504,7 +504,7 @@ void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW,
       }
       break;
 
-      case 4: //draw static square grating
+    case 4: //draw static square grating
       startMs = millis();
       for (i=0;i<numLines;i++) {
         if ((i%(numBar1Columns+numBar2Columns))<numBar1Columns) {
@@ -535,36 +535,36 @@ void drawPattern(uint8_t type, uint8_t pos[2], uint8_t numrepeats, uint8_t barW,
       }
       break;
       
-      case 5: //use backlight to flicker
-        flickerPeriodUs = 1000000/(float(freq)/10);
-        startMs = millis();
-        while ((millis()-startMs)<(dur*100)) {
-          digitalWrite(BACKLIGHT,HIGH);
-          if ((flickerPeriodUs/2)>16380) {
-            delay((flickerPeriodUs/2)/1000);
-          } else {
-            delayMicroseconds(flickerPeriodUs/2);
-          }
-          digitalWrite(BACKLIGHT,LOW);
-          if ((flickerPeriodUs/2)>16380) {
-            delay((flickerPeriodUs/2)/1000);
-          } else {
-            delayMicroseconds(flickerPeriodUs/2);
-          }
+    case 5: //use backlight to flicker
+      flickerPeriodUs = 1000000/(float(freq)/10);
+      startMs = millis();
+      while ((millis()-startMs)<(dur*100)) {
+        digitalWrite(BACKLIGHT,HIGH);
+        if ((flickerPeriodUs/2)>16380) {
+          delay((flickerPeriodUs/2)/1000);
+        } else {
+          delayMicroseconds(flickerPeriodUs/2);
+        }
+        digitalWrite(BACKLIGHT,LOW);
+        if ((flickerPeriodUs/2)>16380) {
+          delay((flickerPeriodUs/2)/1000);
+        } else {
+          delayMicroseconds(flickerPeriodUs/2);
+        }
 
-          //check for incoming "stop-stimulus" command
-          if (Serial.available()>0) {
-            if (Serial.peek()==102) {
-              commandID = readSerialMessage(); //to remove byte from buffer
-              dur = (millis()-startMs)/100;
-            }
+        //check for incoming "stop-stimulus" command
+        if (Serial.available()>0) {
+          if (Serial.peek()==102) {
+            commandID = readSerialMessage(); //to remove byte from buffer
+            dur = (millis()-startMs)/100;
           }
         }
-        bmark = 25;
-        break;
+      }
+      bmark = 25;
+      break;
 
-      case 6: //draw square gratings, but without drawing the full pattern first
-        shiftPeriodUs = (1000000/(float(freq)/10))/(float(numLines)/float(numrepeats));
+    case 6: //draw square gratings, but without drawing the full pattern first
+      shiftPeriodUs = (1000000/(float(freq)/10))/(float(numLines)/float(numrepeats));
       startMs = millis();
       
       //get "column" indices of edges (for square-wave gratings)

@@ -24,7 +24,6 @@ switch command
     case 'Connect'
         for i=1:length(vs)
             vs(i).controller = serialport(vs(i).port,9600); %define serial port and baud rate
-            fopen(vs(i).controller); %open connection to serial port
         end
         pause(3) %wait for connection(s) to be established
         for i=1:length(vs)
@@ -33,7 +32,7 @@ switch command
             
             %synchronize arduino and PC clock (i.e. calculate system clock timestamp when arduinoVis clock began)
             write(vs(i).controller,121,'uint8'); %begin handshake
-            bytes = read(vs.controller,4,'uint8')'; %read timestamp bytes
+            bytes = read(vs(i).controller,4,'uint8')'; %read timestamp bytes
             arduinoVistime = typecast(uint8(bytes),'uint32'); %current arduinoVis timestamp (measured in ms from arduinoVis start)
             pctime = now; %serial pc timestamp (ms precision)
             pctime = pctime - seconds(arduinoVistime/1000); %subtract arduinoVis time seconds from pctime
@@ -53,7 +52,6 @@ switch command
     case 'Disconnect'
         for i=1:length(vs)
             vs(i) = arduinoVis2matlab(vs(i)); %get serial data from arduinoVis if any still available
-            close(vs(i).controller); %close connection to arduinoVis
         end
         
     case 'Reset-Background'
