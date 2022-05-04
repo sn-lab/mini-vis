@@ -3,13 +3,13 @@
 
 %% open connection to controller
 clear vs %clear "vis-struct"
-vs.port = 'COM11';
+vs.port = 'COM3';
 vs = teensyComm(vs, 'Connect');
 
 %% set experiment parameters
-vs.expname = 'thy1_gcamp6s_directiontuning test';
-vs.directory = 'C:\Users\Schafferlab\Desktop\Visual Cortex';
-vs.trial_duration = 8;
+vs.expname = 'directiontuning2';
+vs.directory = 'C:\Users\misaa\Desktop\';
+vs.trial_duration = 6;
 vs.randomize = 1; %1=randomize order of conditions, 0=don't randomize
 vs.num_trials = 13;
 vs.num_reps = 6;
@@ -40,6 +40,7 @@ if vs.randomize==1
 else
     order = repmat(1:vs.num_trials,[vs.num_reps 1]);
 end
+vs.order = order;
 
 
 %% wait for imaging acquisition
@@ -79,7 +80,7 @@ if ~exist(vs.directory,'dir')
     [pathstr,newfolder,~] = fileparts(vs.directory);
     mkdir(pathstr,newfolder);
 end
-save(fullfile(vs.directory,filename),'vs');
+save(fullfile(vs.directory,filename),'vs')
 
 
 %% close connection

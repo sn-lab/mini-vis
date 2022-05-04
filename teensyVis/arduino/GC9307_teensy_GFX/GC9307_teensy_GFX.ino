@@ -21,7 +21,7 @@ byte backgroundRGB[3]; //[red, green, blue] color values of display background
 
 //initialize default pattern parameters
 uint8_t commandID = 0;
-uint8_t centerPosition[2] = {0, 0}; //[x, y] center coordinate of pattern relative to display center
+uint8_t centerPosition[2] = {128, 128}; //[x, y] center coordinate of pattern relative to display center
 uint8_t numGratings = 2; //number of repeated dark/bright bars in grating
 uint8_t barWidth = 40; //width of each dark/bright bar (in pixels) of grating
 uint8_t colorBytes[3][3] = {{0, 0, 30},{0, 0, 0},{0, 0, 15}};
@@ -573,8 +573,8 @@ void runDemo() {
     //draw square-wave gratings for multiple directions - every 15 degrees
     patternType = 1;
     numGratings = 1;
-    centerPosition[0] = 0;
-    centerPosition[1] = 0;
+    centerPosition[0] = 128;
+    centerPosition[1] = 128;
     barWidth = 60;
     temporalFrequencyDHz = 20; //2 Hz
     durationDs = 10; //1 s

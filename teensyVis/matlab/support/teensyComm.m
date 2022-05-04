@@ -55,6 +55,22 @@ switch command
             teensyComm(vs(i),'Reset-Background');
         end
         
+    case 'Find-Ports'
+        splist = serialportlist("available");
+        vs.foundports = {};
+        for port=1:length(splist)
+            try
+                controller = serial(port,'BaudRate',9600); %define serial port
+                fopen(controller); %open connection to serial port
+                fwrite(controller,0,'uint8'); %command to send back version number
+                bytes = fread(controller,4,'uint8')';
+                versionID = typecast(uint8(bytes),'single');
+                if floor(versionID)==9307
+                    vs.foundports = [vs.port;port];
+                end
+            end
+        end
+        
     case 'Disconnect'
         for i=1:length(vs)
             vs(i) = teensy2matlab(vs(i)); %get serial data from teensy if any still available
